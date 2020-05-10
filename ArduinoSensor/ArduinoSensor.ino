@@ -3,6 +3,10 @@
 
 #define MQTT_SERVER "5.196.95.208"
 #define MQTT_CLIENTID "YUN-Sensor"
+const int sensorPin = A0;
+#include <Bridge.h>
+#include <BridgeHttpClient.h>
+BridgeHttpClient clientTB;
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
@@ -21,28 +25,48 @@ void setup()
   Serial.begin(9600);
   Bridge.begin();
   if (mqtt.connect(MQTT_CLIENTID)) {
-    mqtt.publish("proyectoNTI/aspersor","ConexiónSensor");
+    mqtt.publish("proyectoNTI/aspersor","ConexionSensor");
     mqtt.setCallback(callback);
-    mqtt.subscribe("proyectoNTI/aspersor");
+    //mqtt.subscribe("proyectoNTI/aspersor");
   }
   
+while (!SerialUSB); // wait for a serial connection
+clientTB.addHeader("Content-Type: application/json");
+SerialUSB.println("Finish setup");
 }
+
+
 
 void loop()
 {
-  mqtt.loop();
+  //mqtt.loop();
+  int humedad = analogRead(sensorPin);
+  clientTB.enableInsecure();
+  String s = "{\"humedad\":{\"value\":"+String(humedad)+"}}";
+  char buf[s.length()+1];
+  s.toCharArray(buf,s.length()+1);
+  SerialUSB.println("Envio: "+String(buf));
+  clientTB.put("http://207.249.127.101:1026/v2/entities/SensorMaceta/attrs",buf);
+
+  if (humedad > 450)
+  {
+    col=1;
+  }
+  else{
+    col=3;
+  }
   switch (col){
     case 1: 
     mqtt.publish("proyectoNTI/aspersor","v");
-    col=2;
+    
     break;
     case 2:
     mqtt.publish("proyectoNTI/aspersor","a");
-    col=3;
+    
     break;
     case 3:
     mqtt.publish("proyectoNTI/aspersor","r");
-    col=1;
+    
     break;
   }
   delay(5000);
